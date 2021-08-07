@@ -24,6 +24,8 @@
         "linebreak-style": [
             "error",
             "windows"
-        ]
+        ],
+        "no-underscore-dangle": "warn",
+        "comma-dangle": "off"
     }
 }
