@@ -1,5 +1,6 @@
 const { createDefaultUser } = require('../util/creators');
 const findCurrentChat = require('../util/findCurrentChat');
+const findUserByID = require('../util/findUserByID');
 
 function handlerSendedData(req) {
 	const json = JSON.parse(req);
@@ -7,6 +8,11 @@ function handlerSendedData(req) {
 
 	if (type === 'message') {
 		this.onMessage(json);
+		return;
+	}
+
+	if (type === 'messageUser') {
+		this.onMessageToUser(json);
 	}
 }
 
@@ -34,30 +40,37 @@ class User {
 		const chatOfUser = this.chat.getCurrentChatOfUser(currentUser.ID);
 		this.chat.deleteCurrentUserFromChat(chatOfUser, currentUser);
 
-		const arrFrom = Array.from(chatOfUser.joinedUsers).filter(
-			(user) => user.ID !== currentUser.ID
-		);
+		const arrFrom = Array.from(chatOfUser.joinedUsers);
 		const responce = {
 			type: 'userLeft',
 			chatID: chatOfUser.ID,
 			users: arrFrom,
 			nameOfUser: currentUser.name,
 		};
+		const jsonString = JSON.stringify(responce);
 		arrFrom.forEach((user) => {
-			user.userSocket.send(JSON.stringify(responce));
+			user.userSocket.send(jsonString);
 		});
 	}
 
 	onMessage(data) {
-		/*
-		Тут что-то не то, айдишник (не чат айди) должен
-		использоваться при сообщениях конкретному человеку!!!!
-		*/
 		const currentChat = findCurrentChat(this.chats, data.chatID);
 		const arrFrom = Array.from(currentChat.joinedUsers).filter(
 			(user) => user.ID !== data.ID
 		);
 		arrFrom.forEach((user) => user.userSocket.send(JSON.stringify(data)));
+	}
+
+	onMessageToUser(data) {
+		const { fromID, toID, message } = data;
+		const currentUser = findUserByID(toID, this.chats);
+		currentUser.userSocket.send(
+			JSON.stringify({
+				fromID,
+				message,
+				type: 'messageUser',
+			})
+		);
 	}
 }
 
