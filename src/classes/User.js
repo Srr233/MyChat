@@ -1,6 +1,7 @@
-const { createDefaultUser } = require('../util/creators');
+const { createDefaultUser, createChat } = require('../util/creators');
 const findCurrentChat = require('../util/findCurrentChat');
 const findUserByID = require('../util/findUserByID');
+const sendDataToAllUsers = require('../util/sendDataToAllUsers');
 
 function handlerSendedData(req) {
 	const json = JSON.parse(req);
@@ -13,6 +14,10 @@ function handlerSendedData(req) {
 
 	if (type === 'messageUser') {
 		this.onMessageToUser(json);
+	}
+
+	if (type === 'create') {
+		this.onCreateChat(json);
 	}
 }
 
@@ -71,6 +76,19 @@ class User {
 				type: 'messageUser',
 			})
 		);
+	}
+
+	onCreateChat(data) {
+		const newChat = createChat(data.chatName, data.password);
+		newChat.joinedUsers.add(this);
+		this.chats.push(newChat);
+		const dataRespond = {
+			ID: newChat.ID,
+			chatName: newChat.name,
+			type: 'create',
+		};
+		this.userSocket.send(JSON.stringify(dataRespond));
+		sendDataToAllUsers(this.chats, dataRespond, this);
 	}
 }
 

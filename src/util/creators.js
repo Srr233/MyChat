@@ -1,10 +1,11 @@
 const uniqid = require('uniqid');
 
-function createChat(name) {
+function createChat(name, password = '') {
 	return {
 		name: name || `Chat-${uniqid()}`,
 		ID: uniqid(),
 		joinedUsers: new Set(),
+		password,
 		loggs: '',
 	};
 }
