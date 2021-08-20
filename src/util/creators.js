@@ -6,7 +6,7 @@ function createChat(name, password = '') {
 		ID: uniqid(),
 		joinedUsers: new Set(),
 		password,
-		loggs: '',
+		loggs: [],
 	};
 }
 
