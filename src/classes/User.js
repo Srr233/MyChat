@@ -54,6 +54,7 @@ class User {
 
 	onMessage(data) {
 		const currentChat = findCurrentChat(this.chats, data.chatID);
+		currentChat.loggs.push(`${data.name}: ${data.message}`);
 		const arrFrom = Array.from(currentChat.joinedUsers).filter(
 			(user) => user.ID !== data.ID
 		);
