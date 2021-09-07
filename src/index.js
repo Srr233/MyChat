@@ -14,7 +14,7 @@ const server = express()
 	.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 const chat = new Chat();
-const formatterData = new FormatterData(chat.chats);
+const formatterData = new FormatterData(chat);
 
 const serverSocket = new WebSocket.Server({ server });
 

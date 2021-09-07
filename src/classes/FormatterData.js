@@ -2,8 +2,8 @@ const getAllUsersOfCurrentChat = require('../util/getAllUsersOfCurrentChat');
 const getMainChat = require('../util/getMainChat');
 
 class FormatterData {
-	constructor(allChats) {
-		this.chats = allChats;
+	constructor(chat) {
+		this.chat = chat;
 
 		this.getMainChat = getMainChat;
 		this.getAllUsersOfCurrentChat = getAllUsersOfCurrentChat;
@@ -11,7 +11,7 @@ class FormatterData {
 
 	getAllChatsNameID() {
 		const IDs = [];
-		this.chats.forEach((chat) => {
+		this.chat.chats.forEach((chat) => {
 			IDs.push({
 				chatID: chat.ID,
 				name: chat.name,

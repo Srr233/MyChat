@@ -4,6 +4,7 @@ const findCurrentChat = require('../util/findCurrentChat');
 const findUserByID = require('../util/findUserByID');
 const getAllUsersOfCurrentChat = require('../util/getAllUsersOfCurrentChat');
 const sendDataToAllUsers = require('../util/sendDataToAllUsers');
+const transferUsersFromTo = require('../util/transferUsersFromTo');
 
 function handlerSendedData(req) {
 	const json = JSON.parse(req);
@@ -13,6 +14,7 @@ function handlerSendedData(req) {
 	if (type === 'messageUser') this.onMessageToUser(json);
 	if (type === 'create') this.onCreateChat(json);
 	if (type === 'join') this.onJoinChat(json);
+	if (type === 'deleteChat') this.onDeleteChat(json);
 }
 
 class User {
@@ -26,7 +28,7 @@ class User {
 		socket.on('close', this.onClose.bind(this));
 
 		this.chat = chat;
-		this.chats = chat.chats;
+		this.chat.chats = chat.chats;
 		this.userSocket = socket;
 
 		const newUserData = createDefaultUser();
@@ -40,10 +42,12 @@ class User {
 		this.chat.deleteCurrentUserFromChat(chatOfUser, currentUser);
 
 		const arrFrom = Array.from(chatOfUser.joinedUsers);
+		const usersOfCurrChat = getAllUsersOfCurrentChat(chatOfUser);
+
 		const responce = {
 			type: 'userLeft',
 			chatID: chatOfUser.ID,
-			users: arrFrom,
+			users: usersOfCurrChat,
 			nameOfUser: currentUser.name,
 		};
 		const jsonString = JSON.stringify(responce);
@@ -53,7 +57,7 @@ class User {
 	}
 
 	onMessage(data) {
-		const currentChat = findCurrentChat(this.chats, data.chatID);
+		const currentChat = findCurrentChat(this.chat.chats, data.chatID);
 		currentChat.loggs.push(`${data.name}: ${data.message}`);
 		const arrFrom = Array.from(currentChat.joinedUsers).filter(
 			(user) => user.ID !== data.ID
@@ -63,7 +67,7 @@ class User {
 
 	onMessageToUser(data) {
 		const { fromID, toID, message } = data;
-		const currentUser = findUserByID(toID, this.chats);
+		const currentUser = findUserByID(toID, this.chat.chats);
 		currentUser.userSocket.send(
 			JSON.stringify({
 				fromID,
@@ -75,10 +79,16 @@ class User {
 
 	onCreateChat(data) {
 		const newChat = createChat(data.chatName, data.password);
-		const previousChat = findCurrentChat(this.chats, data.currentChatID);
+		const previousChat = findCurrentChat(
+			this.chat.chats,
+			data.currentChatID
+		);
 
+		newChat.admin = this;
 		newChat.joinedUsers.add(this);
-		this.chats.push(newChat);
+		newChat.deleteKey = data.deleteKey;
+
+		this.chat.chats.push(newChat);
 		deleteCurrentUserFromChat(previousChat, this);
 		const dataRespond = {
 			ID: newChat.ID,
@@ -88,13 +98,15 @@ class User {
 			type: 'create',
 		};
 		this.userSocket.send(JSON.stringify(dataRespond));
-		sendDataToAllUsers(this.chats, dataRespond, this);
+		sendDataToAllUsers(this.chat.chats, dataRespond, this);
 	}
 
 	onJoinChat(data) {
-		const currChat = findCurrentChat(this.chats, data.chatID);
-		const previousChat = findCurrentChat(this.chats, data.currentChatID);
-
+		const currChat = findCurrentChat(this.chat.chats, data.chatID);
+		const previousChat = findCurrentChat(
+			this.chat.chats,
+			data.currentChatID
+		);
 		if (data.password === currChat.password) {
 			const users = getAllUsersOfCurrentChat(currChat);
 			const dataRespond = {
@@ -103,32 +115,62 @@ class User {
 				chatID: currChat.ID,
 				type: 'join',
 			};
-			deleteCurrentUserFromChat(previousChat, this);
-			const previousChatUsers = getAllUsersOfCurrentChat(previousChat);
+			if (previousChat) {
+				deleteCurrentUserFromChat(previousChat, this);
+				// eslint-disable-next-line prettier/prettier
+				const previousChatUsers =	getAllUsersOfCurrentChat(previousChat);
 
-			const newUserInChat = JSON.stringify({
-				ID: this.ID,
-				name: this.name,
-				type: 'newUser',
-			});
-			currChat.joinedUsers.forEach((user) => {
-				user.userSocket.send(newUserInChat);
-			});
-			const userLeftData = JSON.stringify({
-				users: previousChatUsers,
-				chatID: data.currentChat,
-				nameOfUser: this.name,
-				type: 'userLeft',
-			});
-			previousChat.joinedUsers.forEach((user) => {
-				user.userSocket.send(userLeftData);
-			});
-
+				const newUserInChat = JSON.stringify({
+					ID: this.ID,
+					name: this.name,
+					type: 'newUser',
+				});
+				currChat.joinedUsers.forEach((user) => {
+					user.userSocket.send(newUserInChat);
+				});
+				const userLeftData = JSON.stringify({
+					users: previousChatUsers,
+					chatID: data.currentChat,
+					nameOfUser: this.name,
+					type: 'userLeft',
+				});
+				previousChat.joinedUsers.forEach((user) => {
+					user.userSocket.send(userLeftData);
+				});
+			}
 			this.chat.pushUserInCurrChat(currChat, this);
 			this.userSocket.send(JSON.stringify(dataRespond));
 			return;
 		}
 		this.userSocket.send(JSON.stringify({ status: 403, type: 'join' }));
+	}
+
+	onDeleteChat(data) {
+		const currChat = findCurrentChat(this.chat.chats, data.chatID);
+
+		if (currChat) {
+			if (data.deleteKey === currChat.deleteKey) {
+				transferUsersFromTo(currChat, this.chat.chats[0]);
+				this.chat.chats = this.chat.chats.filter(
+					(chat) => chat !== currChat
+				);
+				sendDataToAllUsers(
+					this.chat.chats,
+					{
+						chatID: currChat.ID,
+						type: 'deleteChat',
+					},
+					{}
+				);
+			} else {
+				this.userSocket.send(
+					JSON.stringify({
+						type: 'deleteChat',
+						status: 'faild',
+					})
+				);
+			}
+		}
 	}
 }
 

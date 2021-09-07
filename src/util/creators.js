@@ -7,6 +7,8 @@ function createChat(name, password = '') {
 		joinedUsers: new Set(),
 		password,
 		loggs: [],
+		deleteKey: '',
+		admin: {},
 	};
 }
 
