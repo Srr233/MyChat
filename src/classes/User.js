@@ -131,7 +131,7 @@ class User {
 				});
 				const userLeftData = JSON.stringify({
 					users: previousChatUsers,
-					chatID: data.currentChat,
+					chatID: data.currentChatID,
 					nameOfUser: this.name,
 					type: 'userLeft',
 				});
