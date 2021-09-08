@@ -8,13 +8,14 @@ const transferUsersFromTo = require('../util/transferUsersFromTo');
 
 function handlerSendedData(req) {
 	const json = JSON.parse(req);
-	const { type } = json;
+	const { type, what } = json;
 
 	if (type === 'message') this.onMessage(json);
 	if (type === 'messageUser') this.onMessageToUser(json);
 	if (type === 'create') this.onCreateChat(json);
 	if (type === 'join') this.onJoinChat(json);
 	if (type === 'deleteChat') this.onDeleteChat(json);
+	if (type === 'change' && what === 'name') this.onChangeName(json);
 }
 
 class User {
@@ -171,6 +172,16 @@ class User {
 				);
 			}
 		}
+	}
+
+	onChangeName(data) {
+		this.name = data.newName;
+		sendDataToAllUsers(this.chat.chats, {
+			type: 'change',
+			what: 'name',
+			userID: this.ID,
+			newName: this.name,
+		});
 	}
 }
 
