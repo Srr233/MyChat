@@ -5,7 +5,7 @@ const FormatterData = require('./classes/FormatterData');
 const User = require('./classes/User');
 
 const allowOrigin = 'https://chat-client-nodejs.netlify.app/';
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 const server = express()
 	.use((res) => {
 		res.setHeader('Access-Control-Allow-Origin', allowOrigin);
